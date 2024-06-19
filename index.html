@@ -1,0 +1,349 @@
+<!doctype html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="BlueJelly">
+    <meta name="viewport" content="width=640, maximum-scale=1.0, user-scalable=yes">
+    <title>BLE demo</title>
+    <link href="https://fonts.googleapis.com/css?family=Lato:100,300,400,700,900" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="style.css">
+    <script type="text/javascript" src="bluejelly.js"></script>
+  </head>
+
+<body>
+<div class="container">
+    <div class="title margin">
+        <p id="title">Hosiden wireless vibration sensor sample</p>
+        <p id="subtitle">Notifyでデータ読み込み</p>
+    </div>
+
+    <div class="contents margin">
+        <button id="startNotifications" class="button">Start Notify</button>
+        <button id="stopNotifications" class="button">Stop Notify</button>
+        <button id="readmode" class="button">Read mode</button>
+        <button id="readparam" class="button">Read threshold</button>
+        <button id="disconnect" class="button">Disconnect</button>
+        <hr>
+        <div id="device_name"> </div>
+        <div id="uuid_name"> </div>
+        <div>
+          <canvas id="fftChart"></canvas>
+        </div>
+        <div id="data_text"> </div>
+        <div id="status"> </div>
+        <!-- <p>这是一个行内公式：$E=mc^2$</p> -->
+        <!-- <p>这是一个块级公式：$$E=mc^2$$</p> -->
+
+    </div>
+    <div class="footer margin">
+                For more information, see <a href="https://jellyware.jp/kurage" target="_blank">jellyware.jp</a> and <a href="https://github.com/electricbaka/bluejelly" target="_blank">GitHub</a> !
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS_HTML" async></script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+      tex2jax: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          processEscapes: true
+      }
+  });
+</script>
+
+<script>
+//--------------------------------------------------
+//Global変数
+//--------------------------------------------------
+//BlueJellyのインスタンス生成
+const ble = new BlueJelly();
+
+var char_index = 0;
+var xdata = new Array(1024);
+var ydata = new Array(1024);
+var scatterData = [];
+var threshData = [];
+var readCnt = 0;
+
+// Draw chart part
+const ctx = document.getElementById('fftChart');
+
+  const data = {
+    datasets: [{
+      type: 'line', // 设置类型为线形图
+      label: 'FFT data',
+      data: scatterData,
+      //backgroundColor: 'rgb(255, 99, 132)',
+      borderColor: 'blue', // 线的颜色
+      showLine: true, // 显示线条
+      fill: false // 不填充区域
+    },
+    {
+      type: 'line', // 设置类型为线形图
+      label: 'Thresholds',
+      data: threshData,
+      backgroundColor: 'rgb(255, 0, 0)',
+      borderColor: 'red', // 线的颜色
+      showLine: true, // 显示线条
+      fill: false, // 不填充区域
+      hidden: true
+    }]
+  };
+
+const config = {
+  type: 'scatter', // 使用散点图
+  data: data,
+  options: {
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom',
+        min: 0, // minimum of x axis
+        max: 6000, // maximum of x axis
+        title: {
+          display: true,
+          text: 'Frequency[Hz]'
+        }      
+      },
+      y: {
+        min: 0, // minimum of y axis
+        max: 6000, // maximum of y axis
+        title: {
+          display: true,
+          text: 'Acceleration[mg]'
+        }        
+      }
+    }
+  }
+};
+
+const fftChart = new Chart(ctx, config);
+
+//--------------------------------------------------
+//ロード時の処理
+//--------------------------------------------------
+window.onload = function () {
+  //UUIDの設定
+  ble.setUUID("NOTIFY_UUID", BlueJelly.HVE1489_SERVICE, BlueJelly.HVE1489_TX_CHARACTERISTIC);
+  ble.setUUID("MODE_UUID", BlueJelly.HVE1489_SERVICE, BlueJelly.HVE1489_MODE_CHARACTERISTIC);
+  ble.setUUID("THRESHOLD_UUID", BlueJelly.HVE1489_SERVICE, BlueJelly.HVE1489_PARAM_CHARACTERISTIC);
+  for (var i = 0; i < xdata.length; i++) {
+    xdata[i] = (i * 26667/2048).toFixed(2);
+    ydata[i] = 0;
+    scatterData.push({ x: xdata[i], y: ydata[i] });
+  }
+  // Number of Threshold value pair is 5 and every threshold pair needs 4 points.
+  for (var i = 0; i < 20; i++) {
+    threshData.push({ x: 0, y: 0 });
+  }
+
+  fftChart.update();
+}
+
+
+//--------------------------------------------------
+//Scan後の処理
+//--------------------------------------------------
+ble.onScan = function (deviceName) {
+  document.getElementById('device_name').innerHTML = deviceName;
+  document.getElementById('status').innerHTML = "found device!";
+}
+
+
+//--------------------------------------------------
+//ConnectGATT後の処理
+//--------------------------------------------------
+ble.onConnectGATT = function (uuid) {
+  console.log('> connected GATT!');
+
+  document.getElementById('uuid_name').innerHTML = uuid;
+  document.getElementById('status').innerHTML = "connected GATT!";
+}
+
+
+//--------------------------------------------------
+//Read後の処理：得られたデータの表示など行う
+//--------------------------------------------------
+ble.onRead = function (data, uuid){
+
+  if(char_index === 7)
+  {
+    if(data.getUint16(0) === 0x0002 && data.getUint16(2) === 0x1000 && data.getUint8(4) === 0 && data.getUint8(5) === 0 && data.getUint8(6) === 0)
+    {
+      console.log('FFT data header received');
+      // console.log('Data length is '+data.byteLength);
+    } else if(data.getUint8(243) === 0 && data.getUint8(242) === 0 && data.getUint8(241) === 0 && data.getUint8(240) === 0 && data.getUint8(239) === 0)
+    {
+      // For this case, the last data packet has 48(x4) data and 13(x4) zeros
+      for (var i = 0; i < 48; i++) {
+        ydata[61 *readCnt + i] = data.getFloat32(4*i,true).toFixed(2);
+      }
+      console.log('FFT data footer received');
+      // console.log('Data length is '+data.byteLength);
+      readCnt = 0;
+
+      // Updata y data in scatterData by ydata array
+      for (var i = 0; i < scatterData.length; i++) {
+        scatterData[i].y = ydata[i];
+      }
+      fftChart.update();
+
+    } else {
+      //フォーマットに従って値を取得
+      value = data.getFloat32(0,true).toFixed(2);//32bit floatの場合のフォーマット
+      // console.log('Data length is '+data.byteLength);
+
+      for (var i = 0; i < data.byteLength/4; i++) {
+        ydata[61 *readCnt + i] = data.getFloat32(4*i,true).toFixed(2);
+      }
+      
+      //HTMLにデータを表示
+      document.getElementById('data_text').innerHTML = value;
+      readCnt = readCnt + 1;
+    }
+    document.getElementById('uuid_name').innerHTML = uuid;
+    document.getElementById('status').innerHTML = "read data"
+  } 
+  else if(char_index === 2)
+  {
+    //フォーマットに従って値を取得
+    value = data.getUint8(0);//8bitの場合のフォーマット
+    switch(value){
+    case 0:
+      document.getElementById('data_text').innerHTML = "idle mode";
+      break;
+    case 1:
+      document.getElementById('data_text').innerHTML = "period raw data mode";
+      break;
+    case 2:
+      document.getElementById('data_text').innerHTML = "period fft mode";
+      break;
+    case 3:
+      document.getElementById('data_text').innerHTML = "wake up raw data mode";
+      break;
+    case 4:
+      document.getElementById('data_text').innerHTML = "wake up fft mode";
+      break;
+    default:
+      document.getElementById('data_text').innerHTML = "unsupported mode index";
+    }
+    
+  }
+  else if(char_index === 5)
+  {
+    console.log('Data length is '+data.byteLength);
+    var freq_cnt = data.getUint8(0);
+    console.log("freq cnt is "+ freq_cnt);
+    if( freq_cnt !== 0){
+      document.getElementById('data_text').innerHTML = "read " + freq_cnt + " threshold";
+      for(var i = 0; i < freq_cnt; i++) {
+        var freq_threshold = data.getUint8(i+1) * 20;
+        var freq_start = data.getUint8(i+6) * 25;
+        var freq_end = data.getUint8(i+11) * 25;
+        threshData[4*i].x = freq_start;
+        threshData[4*i].y = 0;
+        threshData[4*i+1].x = freq_start;
+        threshData[4*i+1].y = freq_threshold;
+        threshData[4*i+2].x = freq_end;
+        threshData[4*i+2].y = freq_threshold;
+        threshData[4*i+3].x = freq_end;
+        threshData[4*i+3].y = 0;
+      }
+
+      fftChart.getDatasetMeta(1).hidden = false;
+      fftChart.update();
+    }
+  }
+}
+
+
+//--------------------------------------------------
+//Start Notify後の処理
+//--------------------------------------------------
+ble.onStartNotify = function(uuid){
+  console.log('> Start Notify!');
+
+  document.getElementById('uuid_name').innerHTML = uuid;
+  document.getElementById('status').innerHTML = "started Notify";
+}
+
+
+//--------------------------------------------------
+//Stop Notify後の処理
+//--------------------------------------------------
+ble.onStopNotify = function(uuid){
+  console.log('> Stop Notify!');
+
+  document.getElementById('uuid_name').innerHTML = uuid;
+  document.getElementById('status').innerHTML = "stopped Notify";
+}
+
+//--------------------------------------------------
+//Disconnect状態時の処理
+//--------------------------------------------------
+ble.onDisconnect = function() {
+  document.getElementById('uuid_name').innerHTML = "Not Connected";
+  document.getElementById('status').innerHTML = "disconnected";
+}
+
+
+//--------------------------------------------------
+//Clear状態時の処理
+//--------------------------------------------------
+ble.onClear = function() {
+  document.getElementById('device_name').innerHTML = "No Device";
+  document.getElementById('uuid_name').innerHTML = "cleared";
+  document.getElementById('status').innerHTML = "cleared";
+  document.getElementById('data_text').innerHTML = " ";
+}
+
+
+//--------------------------------------------------
+//Reset後の処理
+//--------------------------------------------------
+ble.onReset = function() {
+  document.getElementById('device_name').innerHTML = "No Device";
+  document.getElementById('uuid_name').innerHTML = "Not Connected";
+  document.getElementById('status').innerHTML = "cleared";
+}
+
+//--------------------------------------------------
+//Error後の処理
+//--------------------------------------------------
+ble.onError = function(error){
+  document.getElementById('status').innerHTML = "ERROR : " + error;
+}
+
+
+//-------------------------------------------------
+//ボタンが押された時のイベント登録
+//--------------------------------------------------
+document.getElementById('startNotifications').addEventListener('click', function() {
+      char_index = 7;
+      ble.startNotify('NOTIFY_UUID');
+});
+
+document.getElementById('stopNotifications').addEventListener('click', function() {
+      ble.stopNotify('NOTIFY_UUID');
+});
+
+document.getElementById('readmode').addEventListener('click', function() {
+      char_index = 2;
+      ble.read('MODE_UUID');
+});
+
+document.getElementById('readparam').addEventListener('click', function() {
+      char_index = 5;
+      ble.read('THRESHOLD_UUID');
+});
+
+document.getElementById('disconnect').addEventListener('click', function() {
+      ble.reset();
+});
+
+
+</script>
+</body>
+</html>
