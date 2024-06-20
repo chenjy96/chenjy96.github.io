@@ -24,21 +24,29 @@
         <button id="stopNotifications" class="button">Stop Notify</button>
         <button id="readmode" class="button">Read mode</button>
         <button id="readparam" class="button">Read threshold</button>
+        <button id="setfftmode" class="button">Set FFT mode</button>
+        <button id="setrawmode" class="button">Set Raw Data mode </button>
         <button id="disconnect" class="button">Disconnect</button>
-        <hr>
-        <div id="device_name"> </div>
-        <div id="uuid_name"> </div>
+        <!-- <hr> -->
+        <div id="device_name"> No Device </div>
+        <div id="uuid_name"> Not Connected </div>
         <div>
           <canvas id="fftChart"></canvas>
         </div>
-        <div id="data_text"> </div>
-        <div id="status"> </div>
+        <div id="data_text"> No data </div>
+        <div id="status"> Not Connected </div>
         <!-- <p>这是一个行内公式：$E=mc^2$</p> -->
         <!-- <p>这是一个块级公式：$$E=mc^2$$</p> -->
 
+        <div>
+          <canvas id="rawdataChart"></canvas>
+        </div>
+
     </div>
     <div class="footer margin">
-                For more information, see <a href="https://jellyware.jp/kurage" target="_blank">jellyware.jp</a> and <a href="https://github.com/electricbaka/bluejelly" target="_blank">GitHub</a> !
+        <strong>Do not click set or read button when notify is enabled!</strong>        
+        <br>
+        For more information, see <a href="https://github.com/electricbaka/bluejelly" target="_blank">library repository</a>.
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -61,40 +69,49 @@
 const ble = new BlueJelly();
 
 var char_index = 0;
+var mode_index = 0;
 var xdata = new Array(1024);
 var ydata = new Array(1024);
-var scatterData = [];
+var xrawdata = new Array(2048);
+var yrawdata = new Array(2048);
+var scatterFFTData = [];
+var scatterRawData = [];
 var threshData = [];
 var readCnt = 0;
 
 // Draw chart part
-const ctx = document.getElementById('fftChart');
+const fftctx = document.getElementById('fftChart');
+const rawdatactx = document.getElementById('rawdataChart');
 
-  const data = {
-    datasets: [{
-      type: 'line', // 设置类型为线形图
-      label: 'FFT data',
-      data: scatterData,
-      //backgroundColor: 'rgb(255, 99, 132)',
-      borderColor: 'blue', // 线的颜色
-      showLine: true, // 显示线条
-      fill: false // 不填充区域
-    },
-    {
-      type: 'line', // 设置类型为线形图
-      label: 'Thresholds',
-      data: threshData,
-      backgroundColor: 'rgb(255, 0, 0)',
-      borderColor: 'red', // 线的颜色
-      showLine: true, // 显示线条
-      fill: false, // 不填充区域
-      hidden: true
-    }]
-  };
+const fftdata = {
+  datasets: [{
+    type: 'line', // 设置类型为线形图
+    label: 'FFT data',
+    data: scatterFFTData,
+    //backgroundColor: 'rgb(255, 99, 132)',
+    borderColor: 'blue', // 线的颜色
+    showLine: true, // 显示线条
+    fill: false, // 不填充区域
+    pointRadius: 1,
+    pointHoverRadius: 1
+  },
+  {
+    type: 'line', // 设置类型为线形图
+    label: 'Thresholds',
+    data: threshData,
+    backgroundColor: 'rgb(255, 0, 0)',
+    borderColor: 'red', // 线的颜色
+    showLine: true, // 显示线条
+    fill: false, // 不填充区域
+    hidden: true,
+    pointRadius: 1,
+    pointHoverRadius: 1
+  }]
+};
 
-const config = {
+const fftconfig = {
   type: 'scatter', // 使用散点图
-  data: data,
+  data: fftdata,
   options: {
     scales: {
       x: {
@@ -119,7 +136,49 @@ const config = {
   }
 };
 
-const fftChart = new Chart(ctx, config);
+const rawdata = {
+  datasets: [{
+    type: 'line', // 设置类型为线形图
+    label: 'raw data',
+    data: scatterRawData,
+    //backgroundColor: 'rgb(255, 99, 132)',
+    borderColor: 'blue', // 线的颜色
+    showLine: true, // 显示线条
+    fill: false, // 不填充区域
+    pointRadius: 1,
+    pointHoverRadius: 1
+  }]
+};
+
+const rawconfig = {
+  type: 'scatter', // 使用散点图
+  data: rawdata,
+  options: {
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom',
+        min: 1, // minimum of x axis
+        max: 2048, // maximum of x axis
+        title: {
+          display: true,
+          text: 'time'
+        }      
+      },
+      y: {
+        min: -4000, // minimum of y axis
+        max: 4000, // maximum of y axis
+        title: {
+          display: true,
+          text: 'Acceleration[mg]'
+        }        
+      }
+    }
+  }
+};
+
+const fftChart = new Chart(fftctx, fftconfig);
+const rawChart = new Chart(rawdatactx, rawconfig);
 
 //--------------------------------------------------
 //ロード時の処理
@@ -132,16 +191,61 @@ window.onload = function () {
   for (var i = 0; i < xdata.length; i++) {
     xdata[i] = (i * 26667/2048).toFixed(2);
     ydata[i] = 0;
-    scatterData.push({ x: xdata[i], y: ydata[i] });
+    scatterFFTData.push({ x: xdata[i], y: ydata[i] });
   }
   // Number of Threshold value pair is 5 and every threshold pair needs 4 points.
   for (var i = 0; i < 20; i++) {
     threshData.push({ x: 0, y: 0 });
   }
+  for (var i = 0; i < xrawdata.length; i++) {
+    xrawdata[i] = i + 1;
+    yrawdata[i] = 0;
+    scatterRawData.push({ x: xrawdata[i], y: yrawdata[i] });
+  }
 
   fftChart.update();
+  rawChart.update();
 }
 
+
+//--------------------------------------------------
+//Custom check data function
+//--------------------------------------------------
+function checkFisrtData(data,header,length) {
+    var checkHeader = false;
+    var checkZeroes = true;
+
+    // check header and length
+    if (data.getUint16(0) === header && data.getUint16(2) === length) {
+        checkHeader = true;
+    }
+    // check zeroes
+    if(checkHeader !== false){
+      for (let i = 4; i < 244; i++) {
+        if (data.getUint8(i) !== 0) {
+          checkZeroes = false;
+          break;
+        }
+      }
+    }
+    // console.log('checkHeader is '+ (data.getUint16(0) === header));
+    // console.log('checkLength is '+ (data.getUint16(2) === length));
+  
+    return checkHeader && checkZeroes;
+}
+
+function checkLastData(data,zero_length) {
+    var checkZeroes = true;
+
+    // check zeroes
+    for (let i = 244 - zero_length; i < 244; i++) {
+      if (data.getUint8(i) !== 0) {
+        checkZeroes = false;
+        break;
+      }
+    }    
+    return checkZeroes;
+}
 
 //--------------------------------------------------
 //Scan後の処理
@@ -170,61 +274,111 @@ ble.onRead = function (data, uuid){
 
   if(char_index === 7)
   {
-    if(data.getUint16(0) === 0x0002 && data.getUint16(2) === 0x1000 && data.getUint8(4) === 0 && data.getUint8(5) === 0 && data.getUint8(6) === 0)
+    document.getElementById('uuid_name').innerHTML = uuid;
+    document.getElementById('status').innerHTML = "read notify data"
+
+    if(checkFisrtData(data,0x0002,0x1000))
     {
+      // Read fft data header
       console.log('FFT data header received');
-      // console.log('Data length is '+data.byteLength);
-    } else if(data.getUint8(243) === 0 && data.getUint8(242) === 0 && data.getUint8(241) === 0 && data.getUint8(240) === 0 && data.getUint8(239) === 0)
+      readCnt = 0;
+      mode_index = 2;
+    } 
+    else if(checkLastData(data,52) && (mode_index === 2))
     {
+      // Read fft data footer
       // For this case, the last data packet has 48(x4) data and 13(x4) zeros
       for (var i = 0; i < 48; i++) {
-        ydata[61 *readCnt + i] = data.getFloat32(4*i,true).toFixed(2);
+        ydata[61 * readCnt + i] = data.getFloat32(4*i,true).toFixed(2);
       }
-      console.log('FFT data footer received');
-      // console.log('Data length is '+data.byteLength);
+      readCnt = readCnt + 1;
+      // console.log('FFT data read' + readCnt + 'times');
       readCnt = 0;
-
-      // Updata y data in scatterData by ydata array
-      for (var i = 0; i < scatterData.length; i++) {
-        scatterData[i].y = ydata[i];
+      console.log('FFT data footer received');
+      // Updata y data in scatterFFTData by ydata array
+      for (var i = 0; i < scatterFFTData.length; i++) {
+        scatterFFTData[i].y = ydata[i];
       }
       fftChart.update();
-
-    } else {
-      //フォーマットに従って値を取得
-      value = data.getFloat32(0,true).toFixed(2);//32bit floatの場合のフォーマット
-      // console.log('Data length is '+data.byteLength);
-
-      for (var i = 0; i < data.byteLength/4; i++) {
-        ydata[61 *readCnt + i] = data.getFloat32(4*i,true).toFixed(2);
+    } 
+    else 
+    {  
+      if(mode_index === 2)
+      {
+        for (var i = 0; i < data.byteLength/4; i++) {
+          ydata[61 *readCnt + i] = data.getFloat32(4*i,true).toFixed(2);
+        }
+        readCnt = readCnt + 1;
+        // console.log('Raw data read' + readCnt + 'times');
       }
-      
-      //HTMLにデータを表示
-      document.getElementById('data_text').innerHTML = value;
-      readCnt = readCnt + 1;
     }
-    document.getElementById('uuid_name').innerHTML = uuid;
-    document.getElementById('status').innerHTML = "read data"
+
+    if(checkFisrtData(data,0x0001,0x2000))
+    {
+      // Read raw data header
+      console.log('Raw data header received');
+      readCnt = 0;
+      mode_index = 1;
+    }
+    else if(checkLastData(data,104) && (mode_index === 1))
+    {
+      // Read raw data footer
+      // For this case, the last data packet has 35(x4) data and 26(x4) zeros
+      for (var i = 0; i < 35; i++) {
+        yrawdata[61 * readCnt + i] = data.getFloat32(4*i,true).toFixed(2);
+      }
+
+      readCnt = readCnt + 1;
+      // console.log('Raw data read' + readCnt + 'times');
+      readCnt = 0;
+      console.log('Raw data footer received');
+      // Updata y data in scatterRawData by yrawdata array
+      for (var i = 0; i < scatterRawData.length; i++) {
+        scatterRawData[i].y = yrawdata[i];
+      }
+      rawChart.update();
+    } 
+    else 
+    {
+      if(mode_index === 1){
+        for (var i = 0; i < data.byteLength/4; i++) {
+          yrawdata[61 *readCnt + i] = data.getFloat32(4*i,true).toFixed(2);
+        }
+        readCnt = readCnt + 1;
+        // console.log('Raw data read' + readCnt + 'times');
+      } 
+    }
+
+
+
   } 
   else if(char_index === 2)
   {
-    //フォーマットに従って値を取得
-    value = data.getUint8(0);//8bitの場合のフォーマット
+    document.getElementById('uuid_name').innerHTML = uuid;
+    document.getElementById('status').innerHTML = "mode read"
+
+    value = data.getUint8(0);
+    console.log("mode index is "+ value);
     switch(value){
     case 0:
       document.getElementById('data_text').innerHTML = "idle mode";
+      mode_index = 0;
       break;
     case 1:
       document.getElementById('data_text').innerHTML = "period raw data mode";
+      mode_index = 1;
       break;
     case 2:
       document.getElementById('data_text').innerHTML = "period fft mode";
+      mode_index = 2;
       break;
     case 3:
       document.getElementById('data_text').innerHTML = "wake up raw data mode";
+      mode_index = 3;
       break;
     case 4:
       document.getElementById('data_text').innerHTML = "wake up fft mode";
+      mode_index = 4;
       break;
     default:
       document.getElementById('data_text').innerHTML = "unsupported mode index";
@@ -233,7 +387,10 @@ ble.onRead = function (data, uuid){
   }
   else if(char_index === 5)
   {
-    console.log('Data length is '+data.byteLength);
+    document.getElementById('uuid_name').innerHTML = uuid;
+    document.getElementById('status').innerHTML = "threshold read"
+
+    //console.log('Data length is '+data.byteLength);
     var freq_cnt = data.getUint8(0);
     console.log("freq cnt is "+ freq_cnt);
     if( freq_cnt !== 0){
@@ -256,6 +413,14 @@ ble.onRead = function (data, uuid){
       fftChart.update();
     }
   }
+}
+
+//--------------------------------------------------
+//Write後の処理
+//--------------------------------------------------
+ble.onWrite = function(uuid){
+  document.getElementById('uuid_name').innerHTML = uuid;
+  document.getElementById('status').innerHTML = "data wriiten"
 }
 
 
@@ -296,7 +461,7 @@ ble.onClear = function() {
   document.getElementById('device_name').innerHTML = "No Device";
   document.getElementById('uuid_name').innerHTML = "cleared";
   document.getElementById('status').innerHTML = "cleared";
-  document.getElementById('data_text').innerHTML = " ";
+  document.getElementById('data_text').innerHTML = "No data ";
 }
 
 
@@ -341,6 +506,18 @@ document.getElementById('readparam').addEventListener('click', function() {
 
 document.getElementById('disconnect').addEventListener('click', function() {
       ble.reset();
+});
+
+document.getElementById('setfftmode').addEventListener('click', function() {
+  var fft_mode = new Uint8Array([0x02]);
+  ble.write('MODE_UUID', fft_mode);
+  mode_index = 2;
+});
+
+document.getElementById('setrawmode').addEventListener('click', function() {
+  var raw_mode = new Uint8Array([0x01]);
+  ble.write('MODE_UUID', raw_mode);
+  mode_index = 1;
 });
 
 

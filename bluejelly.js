@@ -18,6 +18,10 @@ https://webbluetoothcg.github.io/web-bluetooth/
 //--------------------------------------------------
 //BlueJelly constructor
 //--------------------------------------------------
+var isModeListenerAdded = false;
+var isThresholdListenerAdded = false;
+var isNotifyListenerAdded = false;
+
 var BlueJelly = function(){
   this.bluetoothDevice = null;
   this.dataCharacteristic = null;
@@ -106,7 +110,23 @@ BlueJelly.prototype.connectGATT = function(uuid) {
   })
   .then(characteristic => {
     this.dataCharacteristic = characteristic;
-    this.dataCharacteristic.addEventListener('characteristicvaluechanged',this.dataChanged(this, uuid));
+    console.log('char uuid is ' + this.hashUUID[uuid].characteristicUUID);
+    if(this.hashUUID[uuid].characteristicUUID === '4d8e0002-287d-4da4-b61c-d431c3b135a0' && isModeListenerAdded === false){
+      this.dataCharacteristic.addEventListener('characteristicvaluechanged',this.dataChanged(this, uuid));
+      isModeListenerAdded = true;
+      console.log('mode listener added');
+    }
+    else if(this.hashUUID[uuid].characteristicUUID === '4d8e0005-287d-4da4-b61c-d431c3b135a0' && isThresholdListenerAdded === false){
+      this.dataCharacteristic.addEventListener('characteristicvaluechanged',this.dataChanged(this, uuid));
+      isThresholdListenerAdded = true;
+      console.log('threshold listener added');
+    }
+    else if(this.hashUUID[uuid].characteristicUUID === '4d8e0007-287d-4da4-b61c-d431c3b135a0' && isNotifyListenerAdded === false){
+      this.dataCharacteristic.addEventListener('characteristicvaluechanged',this.dataChanged(this, uuid));
+      isNotifyListenerAdded = true;
+      console.log('notify listener added');
+    }
+
     this.onConnectGATT(uuid);
   })
   .catch(error => {
