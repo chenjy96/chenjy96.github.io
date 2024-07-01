@@ -6,6 +6,11 @@
   <title>Hosiden Wireless Vibration Sensor Demo</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.2/FileSaver.min.js"></script>
   <script src="bluejelly.js"></script>
@@ -118,14 +123,32 @@
     }
     
     @media (max-width: 1100px) {
-    .card-body-text {
-      font-size: 14px;
-    }
-    
-    .card-body-info {
-      display: grid;
-    }
-    
+      .card-body-text {
+        font-size: 14px;
+      }
+      
+      .card-body-info {
+        display: grid;
+      }
+   }
+
+   .footer {
+    margin-top: auto;
+    text-align: center;
+    line-height: 1.2;
+    color: gray;
+   }
+
+   .footer p {
+    margin: 0;
+    padding: 0px 0;
+   }
+
+   .lora-text {
+    font-family: "Lora", serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
   }
 
 
@@ -136,7 +159,7 @@
 <div class="hamburger">&#9776;</div>
 <div class="overlay"></div>
 
-<div class="sidebar">
+<div class="sidebar lora-text">
   <a href="https://www.hosiden.com/" target="_blank">
     <img src="hosiden_logo_transparent.png" alt="Hosiden LOGO" id="logo">
   </a>
@@ -153,11 +176,11 @@
 </div>
 
 <div class="content">
-  <h1 class="title">Wireless Vibration Sensor Demo</h1>
+  <h1 class="title lora-text">Wireless Vibration Sensor Demo</h1>
   <div class="row">
     <div class="col-4">
       <div class="card">
-        <div class="card-body">
+        <div class="card-body lora-text">
           <h4>Connection Status</h4>
           <div class="card_body_info"> 
             <div id="device_name" class="card-body-text">Disconnected</div>
@@ -169,7 +192,7 @@
     </div>
     <div class="col-4">
       <div class="card">
-        <div class="card-body">
+        <div class="card-body lora-text">
           <h4>Data Status</h4>
           <div class="card_body_info"> 
             <div id="data_name" class="card-body-text">No data received</div>
@@ -182,7 +205,7 @@
 
     <div class="col-4">
       <div class="card">
-        <div class="card-body">
+        <div class="card-body lora-text">
           <h4>Detection Status</h4>
           <div class="card_body_info"> 
             <div class="indicator-container card-body-text">
@@ -209,7 +232,7 @@
 </div>
 
 <!-- Modal -->
-<div class="modal fade" id="notifyModal" tabindex="-1" aria-labelledby="notifyModalLabel" aria-hidden="true">
+<div class="modal fade lora-text" id="notifyModal" tabindex="-1" aria-labelledby="notifyModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -237,7 +260,7 @@
   </div>
 </div>
 
-<div style="text-align: center; margin-top: 20px;">
+<div class="footer lora-text">
   <p>Do not click Set or Get button when BLE notification is enabled!</p>
   <p><strong>Only for demo use.</strong> For more information, please contact Hosiden R&D Section.</p>
 </div>
