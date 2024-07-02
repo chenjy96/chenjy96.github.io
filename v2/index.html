@@ -280,7 +280,7 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label for="setThresholdNumber">Set number of threshold </label>
+          <label for="setThresholdNumber" id="setThresholdText">Set number of threshold </label>
           <select class="form-control" id="thresholdNumber">
             <option>0</option>
             <option>1</option>
@@ -338,6 +338,13 @@
   $(document).ready(function() {
       $('#thresholdNumber').change(function() {
           var threshold_num = $(this).val();
+          
+          if(threshold_num !== '0'){
+            document.getElementById('setThresholdText').innerHTML = 'Set number and value of threshold';
+          }else if(threshold_num === '0') {
+            document.getElementById('setThresholdText').innerHTML = 'Set number of threshold';
+          }
+
           $('#threshold_inputs').empty();
           for (var i = 0; i < threshold_num; i++) {
               $('#threshold_inputs').append(`
@@ -559,12 +566,12 @@
           max: 2048, // maximum of x axis
           title: {
             display: true,
-            text: 'time'
+            text: 'time[1/ODR]'
           }      
         },
         y: {
-          min: -4000, // minimum of y axis
-          max: 4000, // maximum of y axis
+          min: -2000, // minimum of y axis
+          max: 2000, // maximum of y axis
           title: {
             display: true,
             text: 'Acceleration[mg]'
