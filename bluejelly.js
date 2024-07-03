@@ -71,8 +71,12 @@ BlueJelly.prototype.scan = function(uuid){
 BlueJelly.prototype.requestDevice = function(uuid) {
   console.log('Execute : requestDevice');
   return navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
-      optionalServices: [this.hashUUID[uuid].serviceUUID]})
+      // acceptAllDevices: true,
+      optionalServices: [this.hashUUID[uuid].serviceUUID],
+      filters: [{
+        name: 'HVE1489'  // device name
+      }]
+    })
   .then(device => {
     this.bluetoothDevice = device;
     this.bluetoothDevice.addEventListener('gattserverdisconnected', this.onDisconnect);
