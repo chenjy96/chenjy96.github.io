@@ -822,15 +822,16 @@ ble.onRead = function (data, uuid){
     //console.log('Data length is '+data.byteLength);
     freq_cnt = data.getUint8(0);
     console.log("freq cnt is "+ freq_cnt);
+    // Reset all data
+    for(var i = 0; i < threshData.length; i++){
+      threshData[i].x = 0;
+      threshData[i].y = 0;
+    } 
+
     if( freq_cnt !== 0){
       document.getElementById('data_name').innerHTML = "read " + freq_cnt + " threshold";
       document.getElementById('thresholdNumber').value = freq_cnt;
       document.getElementById('thresholdNumber').dispatchEvent(new Event('change'));
-      // Reset all data
-      for(var i = 0; i < threshData.length; i++){
-        threshData[i].x = 0;
-        threshData[i].y = 0;
-      } 
 
       for(var i = 0; i < freq_cnt; i++) {
         var freq_threshold = data.getUint8(i+1) * 20;
@@ -852,11 +853,11 @@ ble.onRead = function (data, uuid){
 
       }
 
-      fftChart.getDatasetMeta(1).hidden = false;
-      fftChart.update();
     }else {
       document.getElementById('data_name').innerHTML = "No threshold was set";
     }
+    fftChart.getDatasetMeta(1).hidden = false;
+    fftChart.update();
   }
 }
 
