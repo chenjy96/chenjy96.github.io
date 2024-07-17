@@ -339,6 +339,6 @@ Object.defineProperty(BlueJelly, 'MICROBIT_RX_CHARACTERISTIC', {value: "6e400003
 // HVE1489 UUIDs
 Object.defineProperty(BlueJelly, 'HVE1489_SERVICE', {value: "4d8e0001-287d-4da4-b61c-d431c3b135a0", writable: true});
 Object.defineProperty(BlueJelly, 'HVE1489_MODE_CHARACTERISTIC', {value: "4d8e0002-287d-4da4-b61c-d431c3b135a0", writable: true});
-Object.defineProperty(BlueJelly, 'HVE1489_PERIOD_CHARACTERISTIC', {value: "4d8e0004-287d-4da4-b61c-d431c3b135a0", writable: true});
-Object.defineProperty(BlueJelly, 'HVE1489_PARAM_CHARACTERISTIC', {value: "4d8e0007-287d-4da4-b61c-d431c3b135a0", writable: true});
-Object.defineProperty(BlueJelly, 'HVE1489_TX_CHARACTERISTIC', {value: "4d8e0009-287d-4da4-b61c-d431c3b135a0", writable: true});
+Object.defineProperty(BlueJelly, 'HVE1489_PERIOD_CHARACTERISTIC', {value: "4d8e0003-287d-4da4-b61c-d431c3b135a0", writable: true});
+Object.defineProperty(BlueJelly, 'HVE1489_PARAM_CHARACTERISTIC', {value: "4d8e0005-287d-4da4-b61c-d431c3b135a0", writable: true});
+Object.defineProperty(BlueJelly, 'HVE1489_TX_CHARACTERISTIC', {value: "4d8e0007-287d-4da4-b61c-d431c3b135a0", writable: true});
