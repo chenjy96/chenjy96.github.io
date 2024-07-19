@@ -728,7 +728,7 @@
 //Read後の処理：得られたデータの表示など行う
 //--------------------------------------------------
 ble.onRead = function (data, uuid){
-  console.log("UUID of received data is " + ble.hashUUID[uuid].characteristicUUID);
+  // console.log("UUID of received data is " + ble.hashUUID[uuid].characteristicUUID);
   // Read notify data
   //if(char_index === 7)
   if(ble.hashUUID[uuid].characteristicUUID === BlueJelly.HVE1489_TX_CHARACTERISTIC)
@@ -1183,6 +1183,22 @@ document.getElementById('setThresholdBtn').addEventListener('click', function() 
   
   ble.write('THRESHOLD_UUID', thresh_uint8array);
 
+});
+
+
+document.getElementById('setPeriodBtn').addEventListener('click', function() {
+  console.log("Set Period!");
+  var period_value = document.getElementById('periodInputText').value;
+  period_value = parseInt(period_value , 10);
+  if (isNaN(period_value) || period_value < 0 || period_value > 255) {
+    throw new Error('Input must be a valid number between 0 and 255');
+  }
+  console.log("Period value is " + period_value);
+
+  var period = new Uint8Array([period_value]);
+  ble.write('PERIOD_UUID', period);
+  console.log("Set period to " + period_value);
+  
 });
 
 
