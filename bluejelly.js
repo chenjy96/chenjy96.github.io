@@ -21,6 +21,7 @@ https://webbluetoothcg.github.io/web-bluetooth/
 var isModeListenerAdded = false;
 var isThresholdListenerAdded = false;
 var isNotifyListenerAdded = false;
+var isPeriodListenerAdded = false;
 
 var BlueJelly = function(){
   this.bluetoothDevice = null;
@@ -129,6 +130,11 @@ BlueJelly.prototype.connectGATT = function(uuid) {
       this.dataCharacteristic.addEventListener('characteristicvaluechanged',this.dataChanged(this, uuid));
       isNotifyListenerAdded = true;
       console.log('notify listener added');
+    }
+    else if(this.hashUUID[uuid].characteristicUUID === '4d8e0003-287d-4da4-b61c-d431c3b135a0' && isPeriodListenerAdded === false){
+      this.dataCharacteristic.addEventListener('characteristicvaluechanged',this.dataChanged(this, uuid));
+      isPeriodListenerAdded = true;
+      console.log('period listener added');
     }
 
     this.onConnectGATT(uuid);
@@ -254,6 +260,7 @@ BlueJelly.prototype.disconnect= function() {
     isModeListenerAdded = false;
     isThresholdListenerAdded = false;
     isNotifyListenerAdded = false;
+    isPeriodListenerAdded = false;
 
   } else {
    var error = "Bluetooth Device is already disconnected";

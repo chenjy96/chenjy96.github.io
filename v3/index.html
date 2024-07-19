@@ -179,6 +179,8 @@
   <button class="btn btn-primary" id="getModeBtn">Get mode</button>
   <button class="btn btn-primary" id="falseSetThresholdBtn">Set threshold</button>
   <button class="btn btn-primary" id="getThresholdBtn">Get threshold</button>
+  <button class="btn btn-primary" id="falseSetPeriodBtn">Set Period</button>
+  <button class="btn btn-primary" id="getPeriodBtn">Get Period</button>
   <button class="btn btn-primary" id="disconnectBtn">Disconnect</button>
   <hr><br><br><br><br>
   <button class="btn btn-primary" id="saveDataBtn">Save data</button>
@@ -252,6 +254,12 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
+          <label for="samplingFreqSelect">Select Sampling Frequency</label>
+          <select class="form-control" id="samplingFreqSelect">
+            <option>26667Hz</option>
+            <option>1667Hz</option>
+            <option>417Hz</option>
+          </select>
           <label for="modeSelect">Select Mode</label>
           <select class="form-control" id="modeSelect">
             <option>IDLE</option>
@@ -301,6 +309,30 @@
   </div>
 </div>
 
+<div class="modal fade lora-text" id="setPeriodModal" tabindex="-1" aria-labelledby="setPeriodModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="setPeriodModalLabel">Set Period</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="setPeriodValue" id="setPeriodText">Input Period</label>
+          <div id="period_input">
+            <input type="text" class="form-control limit-input-freq" placeholder="Input period in seconds" id="periodInputText">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal" id="setPeriodBtn">Set Period</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 
 <div class="footer lora-text">
@@ -328,6 +360,10 @@
 
     $('#falseSetThresholdBtn').on('click', function() {
       $('#setThresholdModal').modal('show');
+    });
+
+    $('#falseSetPeriodBtn').on('click', function() {
+      $('#setPeriodModal').modal('show');
     });
 
   });
@@ -388,6 +424,23 @@
             });
           }
       });
+  });
+</script>
+
+<script>
+  const input = document.getElementById('periodInputText');
+
+  input.addEventListener('input', function() {
+      let value = parseInt(this.value);
+      if (isNaN(value)) {
+          this.value = '';
+      } else if (value < 0) {
+          this.value = 0;
+      } else if (value > 100) {
+          this.value = 100;
+      } else {
+          this.value = Math.floor(value);
+      }
   });
 </script>
 
@@ -465,8 +518,7 @@
             }
         }
         // Check ends
-
-        console.log('First freq pair is ' + fftDataArray[start_index[0]].x + ',' + fftDataArray[end_index[0]].x);
+        //console.log('First freq pair is ' + fftDataArray[start_index[0]].x + ',' + fftDataArray[end_index[0]].x);
 
         for(var i = 0; i < freq_cnt; i++){
             for(var j = start_index[i]; j < end_index[i];j++){
@@ -592,6 +644,7 @@
     ble.setUUID("NOTIFY_UUID", BlueJelly.HVE1489_SERVICE, BlueJelly.HVE1489_TX_CHARACTERISTIC);
     ble.setUUID("MODE_UUID", BlueJelly.HVE1489_SERVICE, BlueJelly.HVE1489_MODE_CHARACTERISTIC);
     ble.setUUID("THRESHOLD_UUID", BlueJelly.HVE1489_SERVICE, BlueJelly.HVE1489_PARAM_CHARACTERISTIC);
+    ble.setUUID("PERIOD_UUID", BlueJelly.HVE1489_SERVICE, BlueJelly.HVE1489_PERIOD_CHARACTERISTIC);
     for (var i = 0; i < xdata.length; i++) {
       xdata[i] = (i * 1666.6875/2048).toFixed(2);
       ydata[i] = 0;
@@ -625,7 +678,7 @@
       }
       // check zeroes
       if(checkHeader !== false){
-        for (let i = 4; i < 244; i++) {
+        for (let i = 13; i < 244; i++) {
           if (data.getUint8(i) !== 0) {
             checkZeroes = false;
             break;
@@ -675,10 +728,13 @@
 //Read後の処理：得られたデータの表示など行う
 //--------------------------------------------------
 ble.onRead = function (data, uuid){
-
+  console.log("UUID of received data is " + ble.hashUUID[uuid].characteristicUUID);
   // Read notify data
-  if(char_index === 7)
+  //if(char_index === 7)
+  if(ble.hashUUID[uuid].characteristicUUID === BlueJelly.HVE1489_TX_CHARACTERISTIC)
   {
+    //console.log("UUID of received data is "+ ble.hashUUID[uuid].characteristicUUID);
+    //console.log("UUID of notify char is "+ BlueJelly.HVE1489_TX_CHARACTERISTIC);
     document.getElementById('uuid_name').innerHTML = uuid;
     document.getElementById('data_status').innerHTML = "read notify data"
 
@@ -688,6 +744,29 @@ ble.onRead = function (data, uuid){
       console.log('FFT data header received');
       readCnt = 0;
       mode_index = 2;
+
+      console.log("Operation mode index is "+data.getUint8(6));
+      if(data.getUint8(6) <=5 ){
+        for (var i = 0; i < xdata.length; i++) {
+          scatterFFTData[i].x = (i * 26667/2048).toFixed(2);
+        }
+        fftChart.options.scales.x.max = 6000;
+        fftChart.update();
+      } else if(data.getUint8(6) <=9){
+        for (var i = 0; i < xdata.length; i++) {
+          scatterFFTData[i].x = (i * 1666.6875/2048).toFixed(2);
+        }
+        fftChart.options.scales.x.max = 200;
+        fftChart.update();
+      } 
+
+      var bat_v = data.getUint16(7)/4096*3.6;
+      var temp = data.getInt32(9) * 0.25;
+      //console.log("Battery voltage is " + data.getUint8(7) + " and " + data.getUint8(8));
+
+      document.getElementById('data_name').innerHTML = "Battery voltage is "+ bat_v.toFixed(2) + "V.<br>Temperature is " + temp + "&#8451;";
+
+
     } 
     else if(checkLastData(data,52) && (mode_index === 2))
     {
@@ -747,6 +826,15 @@ ble.onRead = function (data, uuid){
       console.log('Raw data header received');
       readCnt = 0;
       mode_index = 1;
+
+      console.log("Operation mode index is "+data.getUint8(6));
+
+      var bat_v = data.getUint16(7)/4096*3.6;
+      var temp = data.getInt32(9) * 0.25;
+      //console.log("Battery voltage is " + data.getUint8(7) + " and " + data.getUint8(8));
+
+      document.getElementById('data_name').innerHTML = "Battery voltage is "+ bat_v.toFixed(2) + "V.<br>Temperature is " + temp + "&#8451;";
+
     }
     else if(checkLastData(data,52) && (mode_index === 1))
     {
@@ -775,15 +863,14 @@ ble.onRead = function (data, uuid){
           yrawdata[122 *readCnt + i] = (data.getInt16(2*i,true) * 0.244).toFixed(2);
         }
         readCnt = readCnt + 1;
-        console.log('Raw data read' + readCnt + 'times');
+        // console.log('Raw data read' + readCnt + 'times');
       } 
     }
 
-
-
   } 
   // Read mode
-  else if(char_index === 2)
+  //else if(char_index === 2)
+  else if(ble.hashUUID[uuid].characteristicUUID === BlueJelly.HVE1489_MODE_CHARACTERISTIC)
   {
     document.getElementById('uuid_name').innerHTML = uuid;
     document.getElementById('data_status').innerHTML = "mode read"
@@ -802,6 +889,13 @@ ble.onRead = function (data, uuid){
     case 2:
       document.getElementById('data_name').innerHTML = "period fft mode";
       mode_index = 2;
+
+      for (var i = 0; i < xdata.length; i++) {
+        scatterFFTData[i].x = (i * 26667/2048).toFixed(2);
+      }
+      fftChart.options.scales.x.max = 6000;
+      fftChart.update();
+
       break;
     case 3:
       document.getElementById('data_name').innerHTML = "wake up raw data mode";
@@ -811,13 +905,54 @@ ble.onRead = function (data, uuid){
       document.getElementById('data_name').innerHTML = "wake up fft mode";
       mode_index = 4;
       break;
+    case 5:
+      document.getElementById('data_name').innerHTML = "Low freq period raw data mode";
+      mode_index = 1;
+      break;
+    case 6:
+      document.getElementById('data_name').innerHTML = "Low freq period fft mode";
+      mode_index = 2;
+
+      for (var i = 0; i < xdata.length; i++) {
+        scatterFFTData[i].x = (i * 1666.6875/2048).toFixed(2);
+      }
+      fftChart.options.scales.x.max = 200;
+      fftChart.update();
+
+      break;
+    case 7:
+      document.getElementById('data_name').innerHTML = "Low freq wake up raw data mode";
+      mode_index = 3;
+      break;
+    case 8:
+      document.getElementById('data_name').innerHTML = "Low freq wake up fft mode";
+      mode_index = 4;
+      break;
+    case 9:
+      document.getElementById('data_name').innerHTML = "Ultra low freq period raw data mode";
+      mode_index = 1;
+      break;
+    case 10:
+      document.getElementById('data_name').innerHTML = "Ultra low freq period fft mode";
+      mode_index = 2;
+      break;
+    case 11:
+      document.getElementById('data_name').innerHTML = "Ultra low freq wake up raw data mode";
+      mode_index = 3;
+      break;
+    case 12:
+      document.getElementById('data_name').innerHTML = "Ultra low freq wake up fft mode";
+      mode_index = 4;
+      break;
+
     default:
       document.getElementById('data_name').innerHTML = "unsupported mode index";
     }
     
   }
   // Read threshold
-  else if(char_index === 5)
+  //else if(char_index === 5)
+  else if(ble.hashUUID[uuid].characteristicUUID === BlueJelly.HVE1489_PARAM_CHARACTERISTIC)
   {
     document.getElementById('uuid_name').innerHTML = uuid;
     document.getElementById('data_status').innerHTML = "threshold read"
@@ -862,6 +997,20 @@ ble.onRead = function (data, uuid){
     fftChart.getDatasetMeta(1).hidden = false;
     fftChart.update();
   }
+  else if(ble.hashUUID[uuid].characteristicUUID === BlueJelly.HVE1489_PERIOD_CHARACTERISTIC)
+  {
+    document.getElementById('uuid_name').innerHTML = uuid;
+    document.getElementById('data_status').innerHTML = "period read"
+
+    value = data.getUint8(0);
+    console.log("value of period is "+ value);
+    if(value === 0){
+      document.getElementById('data_name').innerHTML = "Quick TX mode";
+    }else{
+      document.getElementById('data_name').innerHTML = "Period is " + value + "s";
+    }
+  }
+
 }
 
 //--------------------------------------------------
@@ -953,6 +1102,11 @@ document.getElementById('getThresholdBtn').addEventListener('click', function() 
       ble.read('THRESHOLD_UUID');
 });
 
+document.getElementById('getPeriodBtn').addEventListener('click', function() {
+      char_index = 3;
+      ble.read('PERIOD_UUID');
+});
+
 document.getElementById('disconnectBtn').addEventListener('click', function() {
       ble.reset();
 
@@ -985,17 +1139,26 @@ document.getElementById('setModeBtn').addEventListener('click', function() {
   console.log("Set mode!");
   var mode = document.getElementById('modeSelect');
   var mode_text = mode.options[mode.selectedIndex].text;
+  var samplingFreqIndex = document.getElementById('samplingFreqSelect').selectedIndex;
+  console.log("samplingFreqIndex is "+samplingFreqIndex);
+
   if(mode_text === 'Period-FFT'){
-    var fft_mode = new Uint8Array([0x02]);
+    var fft_mode = new Uint8Array([0x02 + 4 * samplingFreqIndex]);
     ble.write('MODE_UUID', fft_mode);
     mode_index = 2;
     console.log("Set fft mode!");
   }
   else if(mode_text === 'Period-Raw'){
-    var raw_mode = new Uint8Array([0x01]);
+    var raw_mode = new Uint8Array([0x01 + 4 * samplingFreqIndex]);
     ble.write('MODE_UUID', raw_mode);
     mode_index = 1;
     console.log("Set raw mode!");
+  }
+  else if(mode_text === 'IDLE'){
+    var idle_mode = new Uint8Array([0x00]);
+    ble.write('MODE_UUID', idle_mode);
+    mode_index = 0;
+    console.log("Set idle mode!");
   }
 });
 
