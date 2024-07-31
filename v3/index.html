@@ -162,6 +162,42 @@
 
   </style>
 
+  <style>
+    .slider-container {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    #yAxisSlider {
+        width: 200px;
+        margin-right: 10px;
+    }
+    
+    #yAxisValue {
+        min-width: 100px;
+    }
+    </style>
+
+    <style>
+      .slider-container {
+          margin-top: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+      }
+      
+      #rawYAxisSlider {
+          width: 200px;
+          margin-right: 10px;
+      }
+      
+      #rawYAxisValue {
+          min-width: 120px;
+      }
+      </style>
+
 </head>
 <body>
 
@@ -233,10 +269,18 @@
   <div class="row canvas-container">
     <div>
       <canvas id="fftChart" class="myFFTChart"></canvas>
+      <div class="slider-container">
+        <input type="range" id="yAxisSlider" min="0" max="6" step="1" value="2">
+        <span id="yAxisValue">Y-axis Max: 1200 mg</span>
+      </div>
     </div>
     <div>
       <div>
         <canvas id="rawChart" class="myRawChart"></canvas>
+        <div class="slider-container">
+          <input type="range" id="rawYAxisSlider" min="0" max="6" step="1" value="3">
+          <span id="rawYAxisValue">Y-axis Range: ±2000 mg</span>
+      </div>
       </div>
     </div>
   </div>
@@ -1238,6 +1282,75 @@ document.getElementById('saveDataBtn').addEventListener('click', function() {
 });
 
 </script>
+
+<script>
+  // 假设 fftChart 已经在其他地方初始化
+  
+  const yAxisSlider = document.getElementById('yAxisSlider');
+  const yAxisValue = document.getElementById('yAxisValue');
+  
+  const yAxisValues = [100, 500, 1200, 2000, 3000, 5000, 8000];
+  
+  function updateYAxis(index) {
+      const newYMax = yAxisValues[index];
+      yAxisValue.textContent = `Y-axis Max: ${newYMax} mg`;
+      
+      // 更新图表的 y 轴
+      fftChart.options.scales.y.max = newYMax;
+      fftChart.update();
+  }
+  
+  yAxisSlider.addEventListener('input', function() {
+      const index = parseInt(this.value);
+      updateYAxis(index);
+  });
+  
+  // 初始化时设置 Y 轴最大值
+  updateYAxis(2);
+  
+  // 更新图表数据的函数
+  function updateChart(newData) {
+      fftChart.data.datasets[0].data = newData;
+      fftChart.update();
+  }
+  
+  </script>
+
+<script>
+  // 假设 rawChart 已经在其他地方初始化
+  
+  const rawYAxisSlider = document.getElementById('rawYAxisSlider');
+  const rawYAxisValue = document.getElementById('rawYAxisValue');
+  
+  const rawYAxisValues = [100, 500, 1500, 2000, 3000, 5000, 8000];
+  
+  function updateRawYAxis(index) {
+      const newYMax = rawYAxisValues[index];
+      const newYMin = -newYMax;
+      rawYAxisValue.textContent = `Y-axis Range: ±${newYMax} mg`;
+      
+      // 更新图表的 y 轴
+      rawChart.options.scales.y.max = newYMax;
+      rawChart.options.scales.y.min = newYMin;
+      rawChart.update();
+  }
+  
+  rawYAxisSlider.addEventListener('input', function() {
+      const index = parseInt(this.value);
+      updateRawYAxis(index);
+  });
+  
+  // 初始化时设置 Y 轴范围
+  updateRawYAxis(3);  // 默认值为 2000 (索引 3)
+  
+  // 更新图表数据的函数
+  function updateRawChart(newData) {
+      rawChart.data.datasets[0].data = newData;
+      rawChart.update();
+  }
+  
+  // 这里可能还有其他的 JavaScript 代码...
+  </script>
 
 <script src="indicator.js"></script>
 
