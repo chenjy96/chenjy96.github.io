@@ -1153,6 +1153,18 @@ document.getElementById('setModeBtn').addEventListener('click', function() {
     mode_index = 1;
     console.log("Set raw mode!");
   }
+  else if(mode_text === 'WakeUp-Raw'){
+    var wakeup_raw_mode = new Uint8Array([0x03 + 4 * samplingFreqIndex]);
+    ble.write('MODE_UUID', wakeup_raw_mode);
+    mode_index = 1;
+    console.log("Set wake up raw mode!");
+  }
+  else if(mode_text === 'WakeUp-FFT'){
+    var wakeup_fft_mode = new Uint8Array([0x04 + 4 * samplingFreqIndex]);
+    ble.write('MODE_UUID', wakeup_fft_mode);
+    mode_index = 1;
+    console.log("Set wake up fft mode!");
+  }
   else if(mode_text === 'IDLE'){
     var idle_mode = new Uint8Array([0x00]);
     ble.write('MODE_UUID', idle_mode);
