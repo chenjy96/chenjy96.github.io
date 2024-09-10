@@ -7,7 +7,8 @@
   var isGetThreshold = false;
 
   var char_index = 0;
-  var mode_index = 0;
+  var mode_index = 0; // 0=idle,1=period fft,2=period raw,3=wakeup fft,4=wakeup raw
+  var sample_freq_index = 0; // 0=26667Hz,1=26667/16Hz, 2=26667/64Hz
   var xdata = new Array(1024);
   var ydata = new Array(1024);
   var xrawdata = new Array(2048);
@@ -41,8 +42,14 @@
             }
             else
             {
-                start_index[i] = Math.ceil(error_detect_start_freqs[i] / 13.021); // 13.021 = 26667/2048
-                end_index[i] = Math.ceil(error_detect_end_freqs[i] / 13.021);
+                if(sample_freq_index === 0){
+                  start_index[i] = Math.ceil(error_detect_start_freqs[i] / 13.021); // 13.021 = 26667/2048
+                  end_index[i] = Math.ceil(error_detect_end_freqs[i] / 13.021);
+                }else if(sample_freq_index === 1){
+                  start_index[i] = Math.ceil(error_detect_start_freqs[i] / 0.81381); // 0.81381 = 1666.6875/2048
+                  end_index[i] = Math.ceil(error_detect_end_freqs[i] / 0.81381);
+                }
+
             }
         }
 
@@ -285,12 +292,14 @@ ble.onRead = function (data, uuid){
 
       console.log("Operation mode index is "+data.getUint8(6));
       if(data.getUint8(6) <=5 ){
+        sample_freq_index = 0;
         for (var i = 0; i < xdata.length; i++) {
           scatterFFTData[i].x = (i * 26667/2048).toFixed(2);
         }
         fftChart.options.scales.x.max = 6000;
         fftChart.update();
       } else if(data.getUint8(6) <=9){
+        sample_freq_index = 1;
         for (var i = 0; i < xdata.length; i++) {
           scatterFFTData[i].x = (i * 1666.6875/2048).toFixed(2);
         }
@@ -423,11 +432,12 @@ ble.onRead = function (data, uuid){
     case 1:
       document.getElementById('data_name').innerHTML = "period raw data mode";
       mode_index = 1;
+      sample_freq_index = 0;
       break;
     case 2:
       document.getElementById('data_name').innerHTML = "period fft mode";
       mode_index = 2;
-
+      sample_freq_index = 0;
       for (var i = 0; i < xdata.length; i++) {
         scatterFFTData[i].x = (i * 26667/2048).toFixed(2);
       }
@@ -438,19 +448,22 @@ ble.onRead = function (data, uuid){
     case 3:
       document.getElementById('data_name').innerHTML = "wake up raw data mode";
       mode_index = 3;
+      sample_freq_index = 0;
       break;
     case 4:
       document.getElementById('data_name').innerHTML = "wake up fft mode";
       mode_index = 4;
+      sample_freq_index = 0;
       break;
     case 5:
       document.getElementById('data_name').innerHTML = "Low freq period raw data mode";
       mode_index = 1;
+      sample_freq_index = 1;
       break;
     case 6:
       document.getElementById('data_name').innerHTML = "Low freq period fft mode";
       mode_index = 2;
-
+      sample_freq_index = 1;
       for (var i = 0; i < xdata.length; i++) {
         scatterFFTData[i].x = (i * 1666.6875/2048).toFixed(2);
       }
@@ -461,10 +474,12 @@ ble.onRead = function (data, uuid){
     case 7:
       document.getElementById('data_name').innerHTML = "Low freq wake up raw data mode";
       mode_index = 3;
+      sample_freq_index = 1;
       break;
     case 8:
       document.getElementById('data_name').innerHTML = "Low freq wake up fft mode";
       mode_index = 4;
+      sample_freq_index = 1;
       break;
     case 9:
       document.getElementById('data_name').innerHTML = "Ultra low freq period raw data mode";
@@ -738,8 +753,9 @@ document.getElementById('setThresholdBtn').addEventListener('click', function() 
 
 document.getElementById('setPeriodBtn').addEventListener('click', function() {
   console.log("Set Period!");
-  var period_value = document.getElementById('periodInputText').value;
-  period_value = parseInt(period_value , 10);
+  var period_value_text = document.getElementById('periodInputText').value.trim();
+  console.log("period text is " + period_value_text);
+  var period_value = parseInt(period_value_text , 10);
   if (isNaN(period_value) || period_value < 0 || period_value > 255) {
     throw new Error('Input must be a valid number between 0 and 255');
   }
